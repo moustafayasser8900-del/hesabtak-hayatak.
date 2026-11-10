@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حسابتك وحياتك | Hesabtak & Hayatak</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #0b0b0b; color: #f3f4f6; }
+        .gold-gradient { background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c); }
+        .gold-text { background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card-bg { background-color: #141414; border: 1px solid rgba(204, 163, 82, 0.2); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0b0b; }
+        ::-webkit-scrollbar-thumb { background: #cca352; border-radius: 3px; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Lock Screen Overlay -->
+    <div id="lock-screen" class="fixed inset-0 bg-[#0b0b0b] z-50 flex items-center justify-center p-4 hidden">
+        <div class="card-bg w-full max-w-sm rounded-3xl p-6 text-center space-y-4 shadow-2xl border border-amber-500/40">
+            <div class="w-16 h-16 rounded-2xl gold-gradient mx-auto flex items-center justify-center text-black font-black text-2xl shadow-lg mb-2">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2 id="lock-title" class="text-lg font-bold gold-text">أدخل رمز الحماية (PIN)</h2>
+            <p id="lock-desc" class="text-xs text-gray-400">التطبيق محمي بكلمة مرور لضمان خصوصيتك الكاملة.</p>
+            <input type="password" id="pin-input" maxlength="6" class="w-full bg-black/50 border border-amber-500/30 rounded-xl px-4 py-3 text-center text-2xl tracking-widest text-amber-400 focus:outline-none focus:border-amber-500" placeholder="••••">
+            <button onclick="handlePinSubmit()" class="w-full py-3 rounded-xl gold-gradient text-black font-extrabold text-sm shadow-lg transition">فتح التطبيق</button>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <header class="card-bg sticky top-0 z-40 px-4 py-3 flex justify-between items-center shadow-lg border-b border-amber-600/30">
+        <div class="flex items-center space-x-3 space-x-reverse">
+            <div class="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center text-black font-extrabold text-xl shadow-md">
+                ح
+            </div>
+            <div>
+                <h1 class="font-bold text-lg gold-text">حسابتك وحياتك</h1>
+                <p class="text-xs text-gray-400">فلوسك تحت سيطرتك، وحياتك في تنظيمك</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 space-x-reverse">
+            <button onclick="lockApp()" title="قفل التطبيق" class="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition"><i class="fa-solid fa-lock"></i></button>
+            <button onclick="exportData()" title="تصدير نسخة احتياطية" class="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition"><i class="fa-solid fa-download"></i></button>
+            <label title="استعادة نسخة" class="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition cursor-pointer">
+                <i class="fa-solid fa-upload"></i>
+                <input type="file" id="importFile" onchange="importData(event)" class="hidden">
+            </label>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto p-4">
+
+        <!-- 1. HOME SECTION -->
+        <section id="sec-home" class="space-y-4">
+            <div class="card-bg p-5 rounded-2xl relative overflow-hidden shadow-xl">
+                <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs text-gray-400">إجمالي الصافي المتبقي</span>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-shield-halved ml-1"></i> محمي ومرمّز</span>
+                </div>
+                <h2 id="total-balance" class="text-3xl font-extrabold gold-text mb-4">0.00 ج.م</h2>
+                <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-800">
+                    <div>
+                        <span class="text-xs text-gray-400 block">إجمالي الدخل</span>
+                        <span id="home-income" class="text-green-400 font-bold text-lg">+0.00 ج.م</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-400 block">إجمالي المصروفات</span>
+                        <span id="home-expense" class="text-red-400 font-bold text-lg">-0.00 ج.م</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats & Actions -->
+            <div class="grid grid-cols-2 gap-3">
+                <div onclick="switchTab('life')" class="card-bg p-4 rounded-xl cursor-pointer hover:border-amber-500/50 transition">
+                    <div class="flex justify-between items-center mb-2">
+                        <i class="fa-solid fa-list-check text-amber-400 text-lg"></i>
+                        <span id="pending-tasks-count" class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">0 مهام</span>
+                    </div>
+                    <h3 class="font-bold text-sm">مهام اليوم</h3>
+                    <p class="text-xs text-gray-400 mt-1">اضغط للمتابعة والتنظيم</p>
+                </div>
+                <div onclick="switchTab('life')" class="card-bg p-4 rounded-xl cursor-pointer hover:border-amber-500/50 transition">
+                    <div class="flex justify-between items-center mb-2">
+                        <i class="fa-solid fa-hand-holding-dollar text-amber-400 text-lg"></i>
+                        <span id="total-debts-badge" class="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">0 ج.م</span>
+                    </div>
+                    <h3 class="font-bold text-sm">الديون والسلف</h3>
+                    <p class="text-xs text-gray-400 mt-1">سجل المديونيات</p>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="card-bg p-4 rounded-2xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-sm text-gray-200">آخر المعاملات</h3>
+                    <button onclick="switchTab('accounts')" class="text-xs text-amber-400 hover:underline">عرض الكل</button>
+                </div>
+                <div id="recent-transactions-list" class="space-y-2.5">
+                    <p class="text-center text-xs text-gray-500 py-4">لا توجد معاملات مسجلة بعد.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. ACCOUNTS SECTION -->
+        <section id="sec-accounts" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="font-bold text-lg gold-text">حساباتي والمعاملات</h2>
+                <div class="space-x-2 space-x-reverse">
+                    <button onclick="openModal('income')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-2 rounded-xl font-bold transition"><i class="fa-solid fa-plus ml-1"></i> دخل</button>
+                    <button onclick="openModal('expense')" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-2 rounded-xl font-bold transition"><i class="fa-solid fa-minus ml-1"></i> مصروف</button>
+                </div>
+            </div>
+            <div class="card-bg p-4 rounded-2xl">
+                <h3 class="font-bold text-sm mb-3 text-gray-300">سجل المعاملات بالكامل</h3>
+                <div id="all-transactions-list" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
+            </div>
+        </section>
+
+        <!-- 3. REPORTS SECTION -->
+        <section id="sec-reports" class="space-y-4 hidden">
+            <h2 class="font-bold text-lg gold-text">التقارير والإحصائيات</h2>
+            <div class="card-bg p-4 rounded-2xl flex flex-col items-center">
+                <h3 class="font-bold text-sm text-gray-300 mb-3 w-full text-right">توزيع المصروفات حسب التصنيف</h3>
+                <div class="w-full h-64 flex justify-center items-center">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. LIFE & TASKS SECTION -->
+        <section id="sec-life" class="space-y-4 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="font-bold text-lg gold-text">حياتي ومهامي اليومية</h2>
+                <button onclick="openModal('task')" class="gold-gradient text-black font-bold text-xs px-3 py-2 rounded-xl transition"><i class="fa-solid fa-plus ml-1"></i> مهمة جديدة</button>
+            </div>
+            <div class="card-bg p-4 rounded-2xl">
+                <h3 class="font-bold text-sm mb-3 text-gray-300">قائمة المهام</h3>
+                <div id="tasks-list" class="space-y-2"></div>
+            </div>
+            <div class="card-bg p-4 rounded-2xl mt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-sm text-gray-300">إدارة الديون والسلف</h3>
+                    <button onclick="openModal('debt')" class="bg-amber-600/20 text-amber-400 border border-amber-500/30 text-xs px-3 py-1.5 rounded-xl font-bold transition"><i class="fa-solid fa-plus ml-1"></i> إضافة دين</button>
+                </div>
+                <div id="debts-list" class="space-y-2"></div>
+            </div>
+        </section>
+
+        <!-- 5. PROFILE & SETTINGS SECTION -->
+        <section id="sec-profile" class="space-y-4 hidden">
+            <h2 class="font-bold text-lg gold-text">الحساب الشخصي والأمان</h2>
+            <div class="card-bg p-5 rounded-2xl text-center">
+                <div class="w-20 h-20 rounded-full gold-gradient mx-auto flex items-center justify-center text-black font-extrabold text-2xl shadow-lg mb-3">
+                    MY
+                </div>
+                <h3 class="font-bold text-lg text-white">مصطفى ياسر (Moustafa Yasser)</h3>
+                <p class="text-xs text-gray-400 mt-1">مطور التطبيق ومصممه</p>
+                <div class="mt-4 pt-4 border-t border-gray-800 text-right space-y-3">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">تواصل المطور (Telegram)</span>
+                        <a href="https://t.me/mostafa0o0o0" target="_blank" class="font-bold text-amber-400 hover:underline">@mostafa0o0o0</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PIN Code Settings -->
+            <div class="card-bg p-4 rounded-2xl space-y-3">
+                <h3 class="font-bold text-sm text-amber-400"><i class="fa-solid fa-key ml-1"></i> إعدادات كلمة المرور</h3>
+                <p class="text-xs text-gray-400">تغيير رمز الحماية الخاص بالتطبيق.</p>
+                <input type="password" id="new-pin-input" maxlength="6" class="w-full bg-black/40 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500" placeholder="أدخل رمز PIN الجديد">
+                <button onclick="changePinCode()" class="w-full py-2 bg-amber-600/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition">تحديث رمز الحماية</button>
+            </div>
+
+            <!-- Data Reset Action -->
+            <div class="card-bg p-4 rounded-2xl">
+                <h3 class="font-bold text-sm text-red-400 mb-2">إدارة البيانات</h3>
+                <button onclick="clearAllData()" class="w-full bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 py-2.5 rounded-xl text-xs font-bold transition">مسح كافة البيانات وإعادة الضبط</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Floating Action Button (+) -->
+    <div class="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-30">
+        <button onclick="openQuickModal()" class="w-14 h-14 rounded-full gold-gradient text-black text-2xl font-black shadow-2xl flex items-center justify-center hover:scale-105 transition transform active:scale-95 border-2 border-black">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="card-bg fixed bottom-0 left-0 right-0 z-30 px-2 py-2 flex justify-around items-center border-t border-amber-600/30 shadow-2xl max-w-md mx-auto">
+        <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center text-amber-400 text-xs py-1 px-3 transition">
+            <i class="fa-solid fa-house text-lg mb-1"></i>
+            <span>الرئيسية</span>
+        </button>
+        <button onclick="switchTab('accounts')" id="nav-accounts" class="flex flex-col items-center text-gray-400 hover:text-amber-400 text-xs py-1 px-3 transition">
+            <i class="fa-solid fa-wallet text-lg mb-1"></i>
+            <span>حساباتي</span>
+        </button>
+        <button onclick="switchTab('reports')" id="nav-reports" class="flex flex-col items-center text-gray-400 hover:text-amber-400 text-xs py-1 px-3 transition">
+            <i class="fa-solid fa-chart-pie text-lg mb-1"></i>
+            <span>التقارير</span>
+        </button>
+        <button onclick="switchTab('life')" id="nav-life" class="flex flex-col items-center text-gray-400 hover:text-amber-400 text-xs py-1 px-3 transition">
+            <i class="fa-solid fa-calendar-check text-lg mb-1"></i>
+            <span>حياتي</span>
+        </button>
+        <button onclick="switchTab('profile')" id="nav-profile" class="flex flex-col items-center text-gray-400 hover:text-amber-400 text-xs py-1 px-3 transition">
+            <i class="fa-solid fa-user text-lg mb-1"></i>
+            <span>حسابي</span>
+        </button>
+    </nav>
+
+    <!-- Universal Modal -->
+    <div id="appModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="card-bg w-full max-w-sm rounded-2xl p-5 relative border border-amber-500/30 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="font-bold text-base gold-text">إضافة معاملة جديدة</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="modalForm" onsubmit="handleFormSubmit(event)" class="space-y-3">
+                <input type="hidden" id="form-type" value="expense">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1" id="label-title">عنوان المعاملة / الوصف</label>
+                    <input type="text" id="input-title" required class="w-full bg-black/40 border border-gray-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-white">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1" id="label-amount">المبلغ (ج.م)</label>
+                    <input type="number" step="0.01" id="input-amount" required class="w-full bg-black/40 border border-gray-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-white" placeholder="0.00">
+                </div>
+                <div id="category-container">
+                    <label class="block text-xs text-gray-400 mb-1">التصنيف</label>
+                    <select id="input-category" class="w-full bg-black/40 border border-gray-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500 text-white">
+                        <option value="طعام وشراب">طعام وشراب</option>
+                        <option value="مواصلات">مواصلات</option>
+                        <option value="فواتير واشتراكات">فواتير واشتراكات</option>
+                        <option value="تسوق وملابس">تسوق وملابس</option>
+                        <option value="ترفيه وصحة">ترفيه وصحة</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-3 rounded-xl gold-gradient text-black font-bold text-sm shadow-lg transition mt-4">حفظ العملية</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Action Modal -->
+    <div id="quickModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="card-bg w-full max-w-xs rounded-2xl p-5 relative border border-amber-500/30 shadow-2xl text-center space-y-3">
+            <h3 class="font-bold text-base gold-text mb-2">إضافة سريعة</h3>
+            <button onclick="closeQuickModal(); openModal('income');" class="w-full py-2.5 bg-green-600/20 text-green-400 border border-green-500/30 rounded-xl font-bold text-sm transition"><i class="fa-solid fa-plus-circle ml-2"></i> إضافة دخل</button>
+            <button onclick="closeQuickModal(); openModal('expense');" class="w-full py-2.5 bg-red-600/20 text-red-400 border border-red-500/30 rounded-xl font-bold text-sm transition"><i class="fa-solid fa-minus-circle ml-2"></i> إضافة مصروف</button>
+            <button onclick="closeQuickModal(); openModal('task');" class="w-full py-2.5 bg-amber-600/20 text-amber-400 border border-amber-500/30 rounded-xl font-bold text-sm transition"><i class="fa-solid fa-list-check ml-2"></i> إضافة مهمة</button>
+            <button onclick="closeQuickModal(); openModal('debt');" class="w-full py-2.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl font-bold text-sm transition"><i class="fa-solid fa-hand-holding-dollar ml-2"></i> إضافة دين</button>
+            <button onclick="closeQuickModal()" class="w-full py-2 text-gray-400 text-xs font-bold hover:text-white mt-2">إلغاء</button>
+        </div>
+    </div>
+
+    <script>
+        let appData = JSON.parse(localStorage.getItem('hesabtak_data')) || {
+            transactions: [],
+            tasks: [],
+            debts: [],
+            pinCode: ""
+        };
+
+        let expenseChartInstance = null;
+
+        // Security / PIN Check on Load
+        window.onload = function() {
+            const lockScreen = document.getElementById('lock-screen');
+            const lockTitle = document.getElementById('lock-title');
+            const lockDesc = document.getElementById('lock-desc');
+
+            if(!appData.pinCode || appData.pinCode === "") {
+                lockTitle.innerText = "أنشئ رمز حماية جديد (PIN)";
+                lockDesc.innerText = "يرجى إدخال رمز سري لتأمين بياناتك المالية والخاصة.";
+            } else {
+                lockTitle.innerText = "أدخل رمز الحماية (PIN)";
+                lockDesc.innerText = "التطبيق محمي بكلمة مرور لضمان خصوصيتك.";
+            }
+            lockScreen.classList.remove('hidden');
+        };
+
+        function handlePinSubmit() {
+            const val = document.getElementById('pin-input').value;
+            if(!val || val.length < 4) {
+                alert('يرجى إدخال 4 أرقام على الأقل.');
+                return;
+            }
+
+            if(!appData.pinCode || appData.pinCode === "") {
+                appData.pinCode = val;
+                saveData();
+                document.getElementById('lock-screen').classList.add('hidden');
+            } else {
+                if(val === appData.pinCode) {
+                    document.getElementById('lock-screen').classList.add('hidden');
+                    document.getElementById('pin-input').value = "";
+                } else {
+                    alert('رمز الحماية غير صحيح!');
+                }
+            }
+        }
+
+        function lockApp() {
+            document.getElementById('pin-input').value = "";
+            document.getElementById('lock-screen').classList.remove('hidden');
+        }
+
+        function changePinCode() {
+            const newPin = document.getElementById('new-pin-input').value;
+            if(!newPin || newPin.length < 4) {
+                alert('يرجى كتابة رمز سري صحيح (4 أرقام على الأقل).');
+                return;
+            }
+            appData.pinCode = newPin;
+            saveData();
+            document.getElementById('new-pin-input').value = "";
+            alert('تم تحديث رمز الحماية بنجاح!');
+        }
+
+        function saveData() {
+            localStorage.setItem('hesabtak_data', JSON.stringify(appData));
+            updateUI();
+        }
+
+        function switchTab(tabId) {
+            ['home', 'accounts', 'reports', 'life', 'profile'].forEach(t => {
+                document.getElementById(`sec-${t}`).classList.add('hidden');
+                const navBtn = document.getElementById(`nav-${t}`);
+                if(navBtn) {
+                    navBtn.classList.remove('text-amber-400');
+                    navBtn.classList.add('text-gray-400');
+                }
+            });
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if(activeNav) {
+                activeNav.classList.remove('text-gray-400');
+                activeNav.classList.add('text-amber-400');
+            }
+            if(tabId === 'reports') renderChart();
+        }
+
+        function openModal(type) {
+            document.getElementById('form-type').value = type;
+            const titleEl = document.getElementById('modal-title');
+            const catContainer = document.getElementById('category-container');
+            const labelTitle = document.getElementById('label-title');
+            
+            if(type === 'income') {
+                titleEl.innerText = 'تسجيل دخل جديد';
+                labelTitle.innerText = 'مصدر الدخل (مرتب، عمل حر...)';
+                catContainer.style.display = 'none';
+            } else if(type === 'expense') {
+                titleEl.innerText = 'تسجيل مصروف جديد';
+                labelTitle.innerText = 'وصف المصروف (طعام، مواصلات...)';
+                catContainer.style.display = 'block';
+            } else if(type === 'task') {
+                titleEl.innerText = 'إضافة مهمة جديدة';
+                labelTitle.innerText = 'عنوان المهمة اليومية';
+                catContainer.style.display = 'none';
+            } else if(type === 'debt') {
+                titleEl.innerText = 'إضافة دين / سلفة';
+                labelTitle.innerText = 'اسم الشخص والبيان';
+                catContainer.style.display = 'none';
+            }
+            document.getElementById('modalForm').reset();
+            document.getElementById('appModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('appModal').classList.add('hidden'); }
+        function openQuickModal() { document.getElementById('quickModal').classList.remove('hidden'); }
+        function closeQuickModal() { document.getElementById('quickModal').classList.add('hidden'); }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const type = document.getElementById('form-type').value;
+            const title = document.getElementById('input-title').value;
+            const amount = parseFloat(document.getElementById('input-amount').value);
+            const category = document.getElementById('input-category').value;
+            const date = new Date().toLocaleDateString('ar-EG');
+
+            if(type === 'income' || type === 'expense') {
+                appData.transactions.unshift({ id: Date.now(), type, title, amount, category, date });
+            } else if(type === 'task') {
+                appData.tasks.unshift({ id: Date.now(), title, completed: false, date });
+            } else if(type === 'debt') {
+                appData.debts.unshift({ id: Date.now(), title, amount, date });
+            }
+            saveData();
+            closeModal();
+        }
+
+        function deleteItem(id, collection) {
+            appData[collection] = appData[collection].filter(item => item.id !== id);
+            saveData();
+        }
+
+        function toggleTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if(task) { task.completed = !task.completed; saveData(); }
+        }
+
+        function updateUI() {
+            let totalIncome = 0, totalExpense = 0;
+            let recentHtml = '', allHtml = '';
+
+            appData.transactions.forEach((tx, idx) => {
+                if(tx.type === 'income') totalIncome += tx.amount;
+                else totalExpense += tx.amount;
+
+                const itemHtml = `
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded-xl border border-gray-800">
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <div class="w-9 h-9 rounded-xl ${tx.type === 'income' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} flex items-center justify-center font-bold">
+                                <i class="fa-solid ${tx.type === 'income' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-sm">${tx.title}</h4>
+                                <span class="text-[10px] text-gray-400">${tx.date} ${tx.category ? '• ' + tx.category : ''}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <span class="font-extrabold text-sm ${tx.type === 'income' ? 'text-green-400' : 'text-red-400'}">
+                                ${tx.type === 'income' ? '+' : '-'}${tx.amount.toFixed(2)} ج.م
+                            </span>
+                            <button onclick="deleteItem(${tx.id}, 'transactions')" class="text-gray-500 hover:text-red-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+                if(idx < 4) recentHtml += itemHtml;
+                allHtml += itemHtml;
+            });
+
+            const netBalance = totalIncome - totalExpense;
+            document.getElementById('total-balance').innerText = netBalance.toFixed(2) + ' ج.م';
+            document.getElementById('home-income').innerText = '+' + totalIncome.toFixed(2) + ' ج.م';
+            document.getElementById('home-expense').innerText = '-' + totalExpense.toFixed(2) + ' ج.م';
+
+            document.getElementById('recent-transactions-list').innerHTML = recentHtml || '<p class="text-center text-xs text-gray-500 py-4">لا توجد معاملات مسجلة بعد.</p>';
+            document.getElementById('all-transactions-list').innerHTML = allHtml || '<p class="text-center text-xs text-gray-500 py-4">لا توجد معاملات مسجلة.</p>';
+
+            let tasksHtml = '', pendingCount = 0;
+            appData.tasks.forEach(task => {
+                if(!task.completed) pendingCount++;
+                tasksHtml += `
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded-xl border border-gray-800">
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                            <span class="text-sm ${task.completed ? 'line-through text-gray-500' : 'text-white'}">${task.title}</span>
+                        </div>
+                        <button onclick="deleteItem(${task.id}, 'tasks')" class="text-gray-500 hover:text-red-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+            });
+            document.getElementById('tasks-list').innerHTML = tasksHtml || '<p class="text-center text-xs text-gray-500 py-4">لا توجد مهام حالياً.</p>';
+            document.getElementById('pending-tasks-count').innerText = pendingCount + ' مهام';
+
+            let debtsHtml = '', totalDebts = 0;
+            appData.debts.forEach(debt => {
+                totalDebts += debt.amount;
+                debtsHtml += `
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded-xl border border-gray-800">
+                        <div>
+                            <h4 class="font-bold text-sm">${debt.title}</h4>
+                            <span class="text-[10px] text-gray-400">${debt.date}</span>
+                        </div>
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <span class="font-extrabold text-sm text-amber-400">${debt.amount.toFixed(2)} ج.م</span>
+                            <button onclick="deleteItem(${debt.id}, 'debts')" class="text-gray-500 hover:text-red-400 text-xs"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('debts-list').innerHTML = debtsHtml || '<p class="text-center text-xs text-gray-500 py-4">لا توجد ديون مسجلة.</p>';
+            document.getElementById('total-debts-badge').innerText = totalDebts.toFixed(2) + ' ج.م';
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const categories = {};
+            appData.transactions.filter(t => t.type === 'expense').forEach(t => {
+                categories[t.category] = (categories[t.category] || 0) + t.amount;
+            });
+            const labels = Object.keys(categories);
+            const data = Object.values(categories);
+
+            if(expenseChartInstance) expenseChartInstance.destroy();
+            if(labels.length === 0) { ctx.clearRect(0, 0, 300, 250); return; }
+
+            expenseChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{ data: data, backgroundColor: ['#cca352', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'], borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#f3f4f6', font: { family: 'Cairo', size: 11 } } } }
+                }
+            });
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "hesabtak_backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    appData = JSON.parse(e.target.result);
+                    saveData();
+                    alert('تم استعادة البيانات بنجاح!');
+                } catch(err) { alert('ملف غير صالح!'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if(confirm('هل أنت متأكد من مسح جميع البيانات؟')) {
+                appData = { transactions: [], tasks: [], debts: [], pinCode: "" };
+                saveData();
+                location.reload();
+            }
+        }
+
+        updateUI();
+    </script>
+</body>
+              </html>
